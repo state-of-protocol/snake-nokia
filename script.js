@@ -3,15 +3,18 @@ const ctx = canvas.getContext("2d");
 const scoreElement = document.getElementById("score");
 const gameOverElement = document.getElementById("game-over");
 
-const gridSize = 20; // Ditingkatkan untuk skrin besar
+const gridSize = 20; 
 let snake, direction, nextDirection, food, score, gameLoop;
 
 function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = Math.floor(window.innerWidth / gridSize) * gridSize;
+    canvas.height = Math.floor(window.innerHeight / gridSize) * gridSize;
 }
 
-window.addEventListener("resize", resizeCanvas);
+window.addEventListener("resize", () => {
+    resizeCanvas();
+});
+
 document.addEventListener("keydown", handleKeyDown);
 
 function startGame() {
@@ -33,7 +36,7 @@ function startGame() {
     createFood();
     
     if (gameLoop) clearInterval(gameLoop);
-    gameLoop = setInterval(update, 80); // Laju sedikit untuk skrin besar
+    gameLoop = setInterval(update, 80);
 }
 
 function update() {
@@ -45,17 +48,29 @@ function update() {
     if (direction === "LEFT") head.x -= gridSize;
     if (direction === "RIGHT") head.x += gridSize;
 
-    // Check collisions (walls)
-    if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height) return gameOver();
+    // --- LOGIK TEMBUS DINDING (SCREEN WRAPPING) ---
+    if (head.x < 0) {
+        head.x = canvas.width - gridSize;
+    } else if (head.x >= canvas.width) {
+        head.x = 0;
+    }
 
-    // Check collisions (self)
+    if (head.y < 0) {
+        head.y = canvas.height - gridSize;
+    } else if (head.y >= canvas.height) {
+        head.y = 0;
+    }
+    // ----------------------------------------------
+
+    // Check collisions (self) - Ular masih mati jika langgar badan sendiri
     for (let i = 0; i < snake.length; i++) {
         if (head.x === snake[i].x && head.y === snake[i].y) return gameOver();
     }
 
     snake.unshift(head);
 
-    if (Math.abs(head.x - food.x) < gridSize && Math.abs(head.y - food.y) < gridSize) {
+    // Check food collision with small buffer
+    if (head.x === food.x && head.y === food.y) {
         score += 10;
         scoreElement.innerText = score;
         createFood();
@@ -86,6 +101,13 @@ function createFood() {
         x: Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize,
         y: Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize
     };
+    
+    // Pastikan makanan tidak muncul di atas badan ular
+    for (let part of snake) {
+        if (food.x === part.x && food.y === part.y) {
+            return createFood();
+        }
+    }
 }
 
 function handleKeyDown(e) {
